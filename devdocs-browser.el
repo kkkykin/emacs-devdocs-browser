@@ -684,10 +684,11 @@ Result is a plist metadata, with an extra :index field at the beginning."
                      devdocs-browser-doc-base-url)))
           ;; write data to files
           (dolist (kv (seq-partition data 2))
-            (when-let* ((name (convert-standard-filename (substring (symbol-name (car kv)) 1)))
+            (when-let* ((name (substring (symbol-name (car kv)) 1))
                         (value (cadr kv))
                         ;; prepent "./" to fix paths starting with literal "~" (e.g. deno)
-                        (path (expand-file-name (concat "./" name ".html") data-dir)))
+                        (path (convert-standard-filename
+                               (expand-file-name (concat "./" name ".html") data-dir))))
               (unless (file-exists-p (file-name-directory path))
                 (make-directory (file-name-directory path) t))
               (write-region value nil path)))
@@ -747,15 +748,14 @@ When called interactively, user can choose from the list."
     ;; url for online:  https://documents.devdocs.io/python~3.8/hello/world.html?161818817#query
     (let ((offline-data-dir (devdocs-browser-offline-data-dir slug)))
       (if offline-data-dir
-          (progn
-            (setq base-url (concat "file://" offline-data-dir))
+          (let ((prefix (concat "file://"
+                                (when (memq system-type '(windows-nt ms-dos))
+                                  "/"))))
+            (setq base-url (concat prefix offline-data-dir))
             (setq url (url-generic-parse-url
-                       (concat "file://"
-                               (when (memq system-type '(windows-nt ms-dos))
-                                 "/")
-                               offline-data-dir
-                               (convert-standard-filename path))))
-            (setf (url-filename url) (concat (url-filename url) ".html")))
+                       (concat prefix
+                               (convert-standard-filename
+                                (expand-file-name (concat path ".html") offline-data-dir))))))
         (setq base-url (concat devdocs-browser-doc-base-url slug "/"))
         (setq url (url-generic-parse-url
                    (concat devdocs-browser-doc-base-url slug "/" path)))
